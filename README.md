@@ -70,6 +70,28 @@ Windows used: ```[8, 24, 48, 96, 288, 672, 1344]```
 - Extracts matching features per timestamp/symbol
 - Streams predictions into submit.csv for official submission
 
+## Usage
+Training and submission example:
+```bash
+from src.first_round_strategy import OlsModel
+
+model = OlsModel()
+model.run()
+```
+
+This will:
+- Load all training parquet files
+- Generate features and targets
+- Train a LightGBM rank model
+- Stream submit.csv and check.csv to the results/ folder
+
+## Data Policy and License
+*This project uses the Avenir–HKU Web3.0 Quantitative Trading Challenge dataset,
+which is proprietary and restricted to authorized competition participants.
+No data files are included in this repository.*
+
+All code in this repository is shared under the MIT License (see LICENSE file).
+
 ## Installation
 
 ```bash
