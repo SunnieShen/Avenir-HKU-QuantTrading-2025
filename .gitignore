@@ -205,3 +205,54 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-Specific (Avenir-HKU Quant Trading)
+# Competition datasets (proprietary)
+data/
+datasets/
+*.parquet
+*.csv
+*.npz
+*.npy
+*.zip
+*.tar
+*.gz
+*.7z
+*.pkl
+*.pickle
+
+# Model outputs and results
+results/
+outputs/
+*.log
+*.out
+*.err
+*.bak
+*.tmp
+*.dat
+*.npz
+*.npy
+
+# Cache and generated files
+panel_cache_npz.npz
+X_mm.dat
+submit.csv
+check.csv
+submission_id.csv
+
+# Keep results folder but ignore its contents
+/results/*
+!/results/.gitkeep
+
+# Kaggle and Colab
+.kaggle/
+.kagglehub/
+colab/
+*.ipynb_checkpoints
+*_checkpoint.ipynb
+*.json
+
+# OS-specific metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
