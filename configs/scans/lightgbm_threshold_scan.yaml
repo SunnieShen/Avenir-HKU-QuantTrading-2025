@@ -1,0 +1,29 @@
+backtest:
+  data_dir: data
+  symbol: BTCUSDT
+  start: "2023-01-01"
+  end: "2024-12-31"
+  bar_seconds: 3600
+  init_balance: 1000000.0
+  fee_rate: 0.001
+
+strategy:
+  name: lightgbm_btc
+  params:
+    prediction_horizon_bars: 24
+    train_window_bars: 4320
+    min_train_bars: 2160
+    retrain_every_bars: 24
+    valid_bars: 336
+    n_estimators: 300
+    num_leaves: 63
+    learning_rate: 0.05
+
+experiment:
+  root_dir: experiments
+
+scan:
+  filters:
+    require_competition_ready: true
+    forbid_short: true
+    max_avg_trades_per_day: 24

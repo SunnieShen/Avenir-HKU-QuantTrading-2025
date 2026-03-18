@@ -1,101 +1,169 @@
-# Avenir–HKU Web3.0 Quantitative Trading Challenge 2025  
-This repository contains the code I developed and submitted for the **Avenir–HKU Web3.0 Quantitative Trading Challenge 2025**, organized by Avenir and the University of Hong Kong.  
-The competition focuses on **algorithmic trading signal generation** using crypto K-line (OHLCV) data, where participants predict 24-hour future returns across hundreds of symbols.
+# Roostoo BTC Backtest Framework
 
-## Overview
+这个仓库已经从原先偏 `Avenir` 比赛提交脚本的结构，改造成更贴近 `Roostoo` Web3 Quant Hackathon 的离线研究框架。
 
-This project implements a **LightGBM-based rank-learning model** (`lambdarank`) for predicting next-day returns using engineered time-series features such as moving averages, momentum, and volatility proxies.  
-All data preprocessing, feature generation, and model training steps are automated through the `OlsModel` class.
+当前目标是：
 
-## Key Features
+- 使用 `data/BTCUSDT/` 下的 Binance 1 分钟数据
+- 把原先 Avenir 风格的 `LightGBM` 特征工程迁到单标的 BTC
+- 以比赛更关心的交易结果为核心，而不是只输出预测分数
+- 输出 `Portfolio Return`、`Sharpe`、`Sortino`、`Calmar`
+- 补充固定 10 天窗口与滚动 10 天窗口的 CSV 和图表
 
-| Module | Description |
-|--------|-------------|
-| **Data Handling** | Reads `.parquet` OHLCV data files for multiple trading symbols; merges them into a synchronized time grid. |
-| **Feature Engineering** | Computes multi-window momentum, EMA gaps, volatility proxies, and intraday seasonality (hour/day of week). |
-| **Caching System** | Uses NumPy `.npz` caching for large multi-symbol arrays to speed up reloads. |
-| **Model** | LightGBM `lambdarank` objective optimized with NDCG and early stopping. |
-| **Evaluation Metric** | Weighted Spearman correlation, aligned with competition’s official scoring. |
-| **Parallel Loading** | Utilizes multi-threading for efficient parquet file reading. |
-| **Submission Generator** | Automatically produces `submit.csv` and `check.csv` following Avenir’s competition schema. |
+## 项目结构
 
-## Model summary
-| Parameter             | Value                         | Description                                        |
-| --------------------- | ----------------------------- | -------------------------------------------------- |
-| **Objective**         | `lambdarank`                  | Rank-based objective for ordered return prediction |
-| **Metric**            | `ndcg@5,10,20`                | Normalized Discounted Cumulative Gain for ranking  |
-| **Learning Rate**     | `0.05`                        | Step size for gradient boosting                    |
-| **Num Leaves**        | `63`                          | Controls model complexity                          |
-| **Feature Fraction**  | `0.9`                         | Random subset of features per tree                 |
-| **Bagging Fraction**  | `0.8`                         | Row subsampling per iteration                      |
-| **Early Stopping**    | `200 rounds`                  | Stop if no improvement                             |
-| **Validation Window** | `Last 60 days`                | Validation split by time                           |
-| **Evaluation Metric** | Weighted Spearman Correlation | Official Avenir Challenge metric                   |
-
-## Feature Engineering 
-| Feature Group                     | Description                                |
-| --------------------------------- | ------------------------------------------ |
-| **Momentum (`mom_w`)**            | Rate of price change over window `w`       |
-| **EMA Gap (`emagap_w`)**          | Deviation from exponential moving average  |
-| **Volatility Proxy (`vol_w`)**    | Rolling standard deviation of returns      |
-| **Parkinson Volatility (`pk_w`)** | Log-range volatility estimator             |
-| **Turnover Std (`tostd_w`)**      | Standard deviation of turnover changes     |
-| **Cross-sectional Ranks**         | Ranks momentum and EMA gap across assets   |
-| **Seasonality**                   | Adds hourly and weekday sinusoidal signals |
-Windows used: ```[8, 24, 48, 96, 288, 672, 1344]```
-
-## Model Architecture
-**1. Data Preprocessing**
-- Reads all .parquet files in /train_data/ (one per crypto pair)
-- Aligns timestamps using a reference symbol
-- Builds a multi-asset panel of OHLCV and VWAP data
-
-**2. Feature Construction**
-- Calculates momentum, EMA deviations, volatility, and seasonality
-- Normalizes features across assets (demeaning, z-scoring, ranking)
-- Caches feature matrices as NumPy arrays for efficient access
-
-**3. Target Generation**
-- Computes 24-hour forward returns (future VWAP / current VWAP - 1)
-- Aligns and shifts targets by 4×24 steps (representing 1 day)
-
-**4. Training Pipeline**
-- Splits training/validation by time
-- Applies time-decay weighting to recent samples
-- Trains LightGBM lambdarank with grouped ranking objective
-- Early stopping based on NDCG score
-
-**5. Inference & Submission**
-- Loads submission_id.csv (competition test IDs)
-- Extracts matching features per timestamp/symbol
-- Streams predictions into submit.csv for official submission
-
-## Usage
-Training and submission example:
-```bash
-from src.first_round_strategy import OlsModel
-
-model = OlsModel()
-model.run()
+```text
+.
+├── run.py
+├── configs/
+│   └── default.yaml
+├── core/
+│   ├── competition.py
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── executor.py
+│   ├── metrics.py
+│   ├── plot.py
+│   ├── runner.py
+│   └── tune.py
+├── strategies/
+│   ├── base.py
+│   ├── lightgbm_btc.py
+│   └── sma.py
+├── src/
+│   └── lightgbm_signal.py
+├── docs/
+│   ├── overview.md
+│   ├── data-and-backtest.md
+│   ├── metrics.md
+│   └── strategy-development.md
+├── data/
+│   └── BTCUSDT/
+└── experiments/
 ```
 
-This will:
-- Load all training parquet files
-- Generate features and targets
-- Train a LightGBM rank model
-- Stream submit.csv and check.csv to the results/ folder
+## 核心策略
 
-## Data Policy and License
-*This project uses the Avenir–HKU Web3.0 Quantitative Trading Challenge dataset,
-which is proprietary and restricted to authorized competition participants.
-No data files are included in this repository.*
+默认策略是 `lightgbm_btc`：
 
-All code in this repository is shared under the MIT License (see LICENSE file).
+- 数据：`BTCUSDT` 现货历史 1 分钟 K 线
+- 模型：`LightGBMRegressor`
+- 训练：walk-forward 滚动训练
+- 信号：未来若干 bar 的收益预测
+- 执行：把预测值映射为 `0 ~ max_weight` 的现货仓位
 
-## Installation
+主要特征包括：
+
+- 多窗口动量
+- EMA 偏离
+- 滚动波动率
+- Parkinson 波动率
+- 成交额变化波动
+- 小时 / 星期季节性
+
+## 比赛口径
+
+当前回测默认对齐以下比赛设定：
+
+- 初始资金：`$1,000,000`
+- 手续费：`0.1%` taker
+- 市场：spot only
+- 做空：禁止
+
+主指标：
+
+- `Portfolio Return`
+- `Sharpe Ratio`
+- `Sortino Ratio`
+- `Calmar Ratio`
+
+同时输出：
+
+- `0.4 * Sortino + 0.3 * Sharpe + 0.3 * Calmar`
+- 固定 10 天分桶指标
+- 滚动 10 天窗口指标
+
+## 安装
 
 ```bash
-git clone https://github.com/<your-username>/AvenirHKU_QuantTrading.git
-cd AvenirHKU_QuantTrading
 pip install -r requirements.txt
 ```
+
+## 运行
+
+### 1. 查看策略
+
+```bash
+python run.py list
+```
+
+### 2. 跑默认配置
+
+```bash
+python run.py run --config configs/default.yaml
+```
+
+### 3. 自定义参数
+
+```bash
+python run.py run \
+  --strategy lightgbm_btc \
+  --start 2023-01-01 \
+  --end 2024-12-31 \
+  --bar 3600 \
+  --param prediction_horizon_bars=24 \
+  --param long_threshold=0.002 \
+  --param max_weight=0.9
+```
+
+### 4. 参数扫描
+
+```bash
+python run.py scan \
+  --config configs/default.yaml \
+  --strategy lightgbm_btc \
+  --grid long_threshold=0.001,0.0015,0.002 \
+  --grid max_weight=0.7,0.85,0.95 \
+  --name lgbm_scan_smoke
+```
+
+## 输出目录
+
+每次回测都会生成：
+
+```text
+experiments/lightgbm_btc/<timestamp>/
+├── config.yaml
+├── metrics.json
+├── trade_metrics.json
+├── competition_report.json
+├── model_meta.json
+├── data/
+│   ├── bars.csv
+│   ├── equity_curve.csv
+│   ├── predictions.csv
+│   ├── rolling_10d_metrics.csv
+│   ├── signals.csv
+│   ├── ten_day_metrics.csv
+│   └── trades.csv
+└── figs/
+    ├── monthly_returns.png
+    ├── price_signals.png
+    ├── return_drawdown.png
+    ├── rolling_10d_vs_buy_hold.png
+    ├── ten_day_metrics.png
+    └── trade_analysis.png
+```
+
+## 文档
+
+- `docs/overview.md`
+- `docs/data-and-backtest.md`
+- `docs/metrics.md`
+- `docs/strategy-development.md`
+
+## 说明
+
+- 原始 `src/strategy.py` 仍保留为早期 Avenir 版本的参考脚本
+- 当前默认入口已经切换到 `run.py + core/ + strategies/ + src/lightgbm_signal.py`
+- 本仓库当前优先支持 `BTCUSDT` 单标的离线研究流程

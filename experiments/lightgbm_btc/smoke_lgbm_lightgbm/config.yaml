@@ -1,0 +1,35 @@
+backtest:
+  bar_seconds: 3600
+  data_dir: /Users/sunnie/Desktop/Avenir-HKU-QuantTrading-2025/data
+  end: '2024-02-20'
+  fee_rate: 0.001
+  init_balance: 1000000.0
+  start: '2024-01-01'
+  symbol: BTCUSDT
+experiment:
+  name: smoke_lgbm_lightgbm
+  overwrite: true
+  root_dir: /Users/sunnie/Desktop/Avenir-HKU-QuantTrading-2025/experiments
+output:
+  save_bars: true
+  save_equity: true
+  save_predictions: true
+  save_signal: true
+  save_trades: true
+scan:
+  filters:
+    forbid_short: true
+    max_avg_trades_per_day: 24
+    require_competition_ready: true
+strategy:
+  name: lightgbm_btc
+  params:
+    flat_threshold: 0.0
+    long_threshold: 0.001
+    max_weight: 0.8
+    min_train_bars: 240
+    n_estimators: 120
+    prediction_horizon_bars: 24
+    retrain_every_bars: 24
+    train_window_bars: 480
+    valid_bars: 72
